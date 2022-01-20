@@ -16,4 +16,10 @@ class DevOpsUsach2020ApplicationTests {
     assertNotNull(p);
 	}
 
+	@Test
+	void contextLoads2() {
+    Pais p = new Pais();
+    assertNotNull(p);
+	}
+
 }
