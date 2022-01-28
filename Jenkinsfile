@@ -4,8 +4,13 @@ def jsonParse(def json) {
 }
 pipeline {
     agent any
+     environment {
+        NEXUS_USER_VAR      = credentials('NEXUS-USER')
+        NEXUS_USER_PASS_VAR = credentials('NEXUS-PASS')
+        
+    }
     stages {
-        stage("Paso 1: Compliar-3"){
+        stage("Paso 1: Compliar"){
             steps {
                 script {
                 sh "echo 'Compile Code!'"
@@ -46,13 +51,35 @@ pipeline {
                     sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=definido-por-mi'
                 }
             }
+            // post {
+            //     //record the test results and archive the jar file.
+            //     success {
+            //         //archiveArtifacts artifacts:'build/*.jar'
+            //         nexusPublisher nexusInstanceId: 'nexus',
+            //             nexusRepositoryId: 'devops-usach-nexus',
+            //             packages: [
+            //                 [$class: 'MavenPackage',
+            //                     mavenAssetList: [
+            //                         [classifier: '',
+            //                         extension: '.jar',
+            //                         filePath: 'build/DevOpsUsach2020-0.0.1.jar']
+            //                     ],
+            //             mavenCoordinate: [
+            //                 artifactId: 'DevOpsUsach2020',
+            //                 groupId: 'com.devopsusach2020',
+            //                 packaging: 'jar',
+            //                 version: '0.0.1']
+            //             ]
+            //         ]
+            //     }
+            // }
         }
         stage("Paso 5: Levantar Springboot APP"){
             steps {
                 sh 'mvn spring-boot:run &'
             }
         }
-        stage("Paso 6: Dormir(Esperar 10sg) "){
+        stage("Paso 6: Dormir(Esperar 40sg) "){
             steps {
                 sh 'sleep 40'
             }
@@ -60,6 +87,50 @@ pipeline {
         stage("Paso 7: Test Alive Service - Testing Application!"){
             steps {
                 sh 'curl -X GET "http://localhost:8081/rest/mscovid/test?msg=testing"'
+            }
+        }
+        stage('Paso 8:Subir Nexus') {
+            steps {
+                echo 'Subiendo a nexus desde código'
+                nexusPublisher nexusInstanceId: 'nexus', nexusRepositoryId: 'devops-usach-nexus', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: '/var/jenkins_home/workspace/job-github-sonar-3/build/DevOpsUsach2020-0.0.1.jar']], mavenCoordinate: [artifactId: 'DevOpsUsach2020', groupId: 'com.devopsusach2020', packaging: 'jar', version: '0.0.1-AS-CODE']]]
+            }
+        }
+        stage('Bajar Nexus') {
+            steps {
+                echo 'Bajando a nexus desde código'
+                sh 'curl -X GET -u $NEXUS_USER_VAR:$NEXUS_USER_PASS_VAR http://nexus:8081/repository/devops-usach-nexus/com/devopsusach2020/DevOpsUsach2020/0.0.1-AS-CODE/DevOpsUsach2020-0.0.1-AS-CODE.jar -O'
+            }
+        }
+    stage("Paso 6 Run: Levantar Springboot APP"){
+            steps {
+                sh 'mvn spring-boot:run &'
+                sh 'nohup bash java -jar DevOpsUsach2020-0.0.1.jar & >/dev/null'
+            }
+        }
+        stage("Paso 7 Curl: Dormir(Esperar 40sg) "){
+            steps {
+               sh "sleep 40 && curl -X GET 'http://localhost:8081/rest/mscovid/test?msg=testing'"
+            }
+        }
+        stage(" paso 8 Subir nueva Version"){
+            steps {
+                //archiveArtifacts artifacts:'build/*.jar'
+                nexusPublisher nexusInstanceId: 'nexus',
+                    nexusRepositoryId: 'devops-usach-nexus',
+                    packages: [
+                        [$class: 'MavenPackage',
+                            mavenAssetList: [
+                                [classifier: '',
+                                extension: 'jar',
+                                filePath: 'build/DevOpsUsach2020-0.0.1.jar']
+                            ],
+                    mavenCoordinate: [
+                        artifactId: 'DevOpsUsach2020',
+                        groupId: 'com.devopsusach2020',
+                        packaging: 'jar',
+                        version: '0.0.4']
+                    ]
+                ]
             }
         }
     }
