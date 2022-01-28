@@ -5,7 +5,7 @@ def jsonParse(def json) {
 pipeline {
     agent any
     stages {
-        stage("Paso 1: Compliar"){
+        stage("Paso 1: Compliar-1"){
             steps {
                 script {
                 sh "echo 'Compile Code!'"
